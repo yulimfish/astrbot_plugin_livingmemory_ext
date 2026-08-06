@@ -1,0 +1,5 @@
+# Local-time semantics are intentional for the diary feature:
+# rules use local HH:MM, and the memory range is local midnight -> now.
+# DTZ is therefore disabled; datetime.now()/fromtimestamp() stay naive-local.
+[lint]
+ignore = ["DTZ001", "DTZ005", "DTZ006"]

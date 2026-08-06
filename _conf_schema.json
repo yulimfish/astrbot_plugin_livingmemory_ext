@@ -1,0 +1,83 @@
+{
+  "diary_digest": {
+    "description": "记忆日记：定时拉取上游 LivingMemory 当日记忆，总结为日记并发送到指定群聊",
+    "type": "object",
+    "items": {
+      "enabled": {
+        "description": "是否启用记忆日记功能",
+        "type": "bool",
+        "default": false
+      },
+      "prompt": {
+        "description": "日记总结提示词（系统提示词 = 此提示词 + 当前 AstrBot 人设）",
+        "hint": "首次安装已内置默认提示词，可自行修改",
+        "type": "text",
+        "default": "你正在把用户今天的长期记忆整理成一篇日记。这是一篇日记，请以第一人称、自然温暖的笔触记录今天发生的重要事情、遇见的人、情绪变化与感悟，写成连贯的段落而不是分条列举。写作时请融入你当前的 AstrBot 人设的性格与语气。请直接输出日记正文，不要输出任何额外说明。"
+      },
+      "llm_provider_id": {
+        "description": "用于日记总结的 LLM Provider（留空使用 AstrBot 默认 Provider）",
+        "type": "string",
+        "_special": "select_provider",
+        "default": ""
+      },
+      "memory_db_path": {
+        "description": "上游 LivingMemory 数据库文件路径（留空自动定位到上游插件的 data 目录）",
+        "type": "string",
+        "default": ""
+      },
+      "rules": {
+        "description": "日记发送规则，可添加多条：每条独立设置总结范围、总结时间与发送位置",
+        "type": "template_list",
+        "templates": {
+          "rule": {
+            "name": "日记发送规则",
+            "hint": "一条日记发送规则（总结范围 + 总结时间 + 发送位置）",
+            "display_item": "name",
+            "items": {
+              "name": {
+                "description": "规则名称",
+                "type": "string",
+                "default": "默认日记规则"
+              },
+              "enabled": {
+                "description": "是否启用此规则",
+                "type": "bool",
+                "default": true
+              },
+              "scope": {
+                "description": "总结范围：all=所有记忆 / group=单群聊 / friend=单好友对话",
+                "type": "string",
+                "options": [
+                  "all",
+                  "group",
+                  "friend"
+                ],
+                "default": "all"
+              },
+              "scope_target": {
+                "description": "范围目标：scope 为 group 时填群号，friend 时填好友 ID，all 时留空",
+                "type": "string",
+                "default": ""
+              },
+              "time": {
+                "description": "总结时间（24 小时制 HH:MM，如 22:00）",
+                "type": "string",
+                "default": "22:00"
+              },
+              "send_to": {
+                "description": "发送位置：填群号（如 123456），也可填完整消息源如 aiocqhttp:GroupMessage:123456",
+                "type": "string",
+                "default": ""
+              },
+              "platform": {
+                "description": "消息平台适配器名（如 aiocqhttp / telegram / discord，填群号时用于构造消息源）",
+                "type": "string",
+                "default": "aiocqhttp"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

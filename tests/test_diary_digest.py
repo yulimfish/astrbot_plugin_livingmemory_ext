@@ -10,6 +10,7 @@ from livingmemory_ext.diary_digest import (
     fetch_day_memories,
     is_due,
     parse_hhmm,
+    resolve_memory_range,
     seconds_until_next_run,
     today_range,
 )
@@ -66,6 +67,53 @@ def test_today_range():
     assert start_dt.hour == 0 and start_dt.minute == 0
     assert end_dt.hour == 15 and end_dt.minute == 30
     assert start_ts <= end_ts
+
+
+def test_resolve_memory_range():
+    now = datetime(2026, 8, 7, 15, 30, 0)
+    today_start, end_ts = resolve_memory_range("today", now)
+    assert end_ts == now.timestamp()
+    assert datetime.fromtimestamp(today_start).hour == 0
+
+    y_start, y_end = resolve_memory_range("yesterday", now)
+    assert y_end == datetime(2026, 8, 7).timestamp()
+    assert y_start == datetime(2026, 8, 6).timestamp()
+
+    w_start, w_end = resolve_memory_range("week7", now)
+    assert w_end == now.timestamp()
+    assert w_start == datetime(2026, 8, 1).timestamp()
+
+    fallback_start, fallback_end = resolve_memory_range("unknown", now)
+    assert fallback_start == today_start
+    assert fallback_end == now.timestamp()
+
+
+def test_resolve_memory_range_defaults():
+    now = datetime(2026, 8, 7, 15, 30, 0)
+    today_start, _ = resolve_memory_range("today", now)
+    for bad_key in (None, "", "  ", 123):
+        s, e = resolve_memory_range(bad_key, now)
+        assert s == today_start
+        assert e == now.timestamp()
+
+    w_start, w_end = resolve_memory_range("WEEK7", now)
+    assert w_start == datetime(2026, 8, 1).timestamp()
+    assert w_end == now.timestamp()
+
+
+def test_resolve_memory_range_midnight():
+    now = datetime(2026, 8, 7, 0, 0, 0)
+    today_start, end_ts = resolve_memory_range("today", now)
+    assert today_start == now.timestamp()
+    assert end_ts == now.timestamp()
+
+    y_start, y_end = resolve_memory_range("yesterday", now)
+    assert y_end == now.timestamp()
+    assert y_start == datetime(2026, 8, 6).timestamp()
+
+    w_start, w_end = resolve_memory_range("week7", now)
+    assert w_end == now.timestamp()
+    assert w_start == datetime(2026, 8, 1).timestamp()
 
 
 def test_is_due():

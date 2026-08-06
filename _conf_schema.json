@@ -65,6 +65,17 @@
                 "type": "string",
                 "default": ""
               },
+              "memory_range": {
+                "description": "获取记忆范围",
+                "hint": "today = 今日 / yesterday = 昨日 / week7 = 近 7 天",
+                "type": "string",
+                "options": [
+                  "today",
+                  "yesterday",
+                  "week7"
+                ],
+                "default": "today"
+              },
               "time": {
                 "description": "总结时间",
                 "hint": "24 小时制 HH:MM，如 22:00",

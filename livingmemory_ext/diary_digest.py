@@ -12,7 +12,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -29,6 +29,10 @@ STATE_FILE = "diary_last_run.json"
 GROUP_UMO_KEY = "GroupMessage"
 PRIVATE_UMO_KEY = "PrivateMessage"
 DEFAULT_PLATFORM = "aiocqhttp"
+
+MEMORY_RANGE_TODAY = "today"
+MEMORY_RANGE_YESTERDAY = "yesterday"
+MEMORY_RANGE_WEEK7 = "week7"
 
 # Keep in sync with the "diary_digest.prompt" default in _conf_schema.json:
 # the schema ships the same built-in prompt for first-time installs.
@@ -100,9 +104,30 @@ def is_due(rule: dict, now: datetime, last_run_date: str | None = None) -> bool:
 
 def today_range(now: datetime | None = None) -> tuple[float, float]:
     """Epoch timestamp range [start of today, now) in local time."""
+    return resolve_memory_range(MEMORY_RANGE_TODAY, now)
+
+
+def resolve_memory_range(
+    range_key: str, now: datetime | None = None
+) -> tuple[float, float]:
+    """Epoch timestamp range [start, now) for the given memory range key.
+
+    Supported keys: 'today' (start of today), 'yesterday' (full previous
+    calendar day), 'week7' (the last 7 calendar days including today).
+    Unknown keys fall back to 'today'.
+    """
     now = now or datetime.now()
-    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    return start.timestamp(), now.timestamp()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if not isinstance(range_key, str):
+        range_key = MEMORY_RANGE_TODAY
+    range_key = (range_key or MEMORY_RANGE_TODAY).strip().lower()
+    if range_key == MEMORY_RANGE_YESTERDAY:
+        start = today_start - timedelta(days=1)
+        return start.timestamp(), today_start.timestamp()
+    if range_key == MEMORY_RANGE_WEEK7:
+        start = today_start - timedelta(days=6)
+        return start.timestamp(), now.timestamp()
+    return today_start.timestamp(), now.timestamp()
 
 
 def build_scope_like(scope: str, platform: str, target: str) -> str | None:
@@ -387,12 +412,13 @@ class DiaryDigestScheduler:
                 rule.get("name") or "unnamed",
             )
             return []
-        start_ts, end_ts = today_range()
+        start_ts, end_ts = resolve_memory_range(rule.get("memory_range"))
         memories = await fetch_day_memories(db_path, start_ts, end_ts, scope_like)
         logger.info(
-            "[DiaryDigest] fetched %d memories for rule %s",
+            "[DiaryDigest] fetched %d memories for rule %s (range %s)",
             len(memories),
             rule.get("name") or "unnamed",
+            rule.get("memory_range") or MEMORY_RANGE_TODAY,
         )
         return memories
 

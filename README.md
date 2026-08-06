@@ -1,0 +1,82 @@
+<div align="center">
+
+# LivingMemory Ext
+
+<p><strong>为 AstrBot 构建的长期记忆插件 —— <a href="https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory">LivingMemory</a> 的定制化拓展。</strong></p>
+
+<p>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-f2e8e5?style=flat-square&labelColor=5b403a" alt="AGPL-3.0 许可证"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-e9f1ef?style=flat-square&labelColor=263a36" alt="Python 3.10 或更高版本">
+  <img src="https://img.shields.io/badge/AstrBot-%3E%3D%204.24.2-f3eee4?style=flat-square&labelColor=544c3d" alt="AstrBot 4.24.2 或更高版本">
+</p>
+
+</div>
+
+## ⚠️ 上游与协议声明
+
+本项目是 [lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory](https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory)（原作者：lxfight）的**定制化拓展**，与原项目同为 AstrBot 插件。
+
+上游项目以 **GNU Affero General Public License v3.0（AGPL-3.0）** 发布。依据 AGPL-3.0 要求，本项目：
+
+- 保留 AGPL-3.0 许可证与上游版权声明（见 [LICENSE](LICENSE)）；
+- 本仓库整体以 AGPL-3.0 发布，任何衍生作品须继续以 AGPL-3.0 授权；
+- 对上游代码的修改与新增内容同样受 AGPL-3.0 约束；
+- 上游版权归 `lxfight-s-Astrbot-Plugins` 所有。
+
+## 🔀 定制化改动记录
+
+> 规则：每次功能改动必须在此处标注（版本号 + 改动列表），并同步更新 [CHANGELOG.md](CHANGELOG.md)。见项目 [AGENTS.md](AGENTS.md)。
+
+### v0.1.1（新增：记忆日记）
+
+- 新增「记忆日记」功能：在自定义时间拉取上游 LivingMemory 保存的当日记忆，总结为日记并发送到指定群聊。
+- 支持多套发送规则：一个群聊 A 配置一个总结时间发到群聊 A，群聊 B 同理，可同时配置多套（总结范围 / 总结时间 / 发送位置）。
+- 配置项为独立板块 `diary_digest`，支持手动开关、自定义总结提示词（首次安装内置默认提示词），总结时自动注入当前 AstrBot 人设。
+- 依赖上游 LivingMemory 插件（读取其 `data/` 下的记忆库，只读）。
+- 双插件共存适配：核心包命名避开 `core/` 等通用顶层包名（与上游同时安装时共享 Python 进程与 sys.path），上游记忆库为 WAL 模式，本插件以只读连接 + busy_timeout 并发读取。
+
+### v0.1.0（项目初始化）
+
+- 项目骨架初始化：AGPL-3.0 合规声明、插件元数据（`metadata.yaml`）、开发规约（`AGENTS.md`）。
+- 定制化功能内容：待定（初始化阶段）。
+
+## ✨ 功能概览
+
+本节能力继承自上游 LivingMemory，本拓展在此基础上做定制化调整：
+
+| 召回 | 智能 | 控制 |
+| :--- | :--- | :--- |
+| **混合检索**<br>BM25 与向量检索覆盖文档路和图路，融合排序收敛结果。 | **双通道总结**<br>事实信息与人格上下文保持独立价值。 | **安全操作**<br>自动备份、事务删除与重建失败回滚。 |
+| **Agent 原生工具**<br>`recall_long_term_memory` 与 `memorize_long_term_memory`。 | **时间感知图谱**<br>关系置信度随证据累积或消退动态变化。 | **专注的管理界面**<br>管理记忆、调试召回并检查完整图谱。 |
+| **动态上下文**<br>事实被拆分为独立记忆原子，含重要度、TTL、强化与衰减。 | **作用域与访问控制**<br>按会话、用户或全局共享，支持强制隔离、白名单与身份别名。 | **在线维护**<br>安全索引重建：分批重建、进度状态、失败回滚与影子索引切换。 |
+
+> 完整的上游功能说明、配置与命令见 [LivingMemory 官方文档](https://lxfight-s-astrbot-plugins.github.io/astrbot_plugin_livingmemory/)。
+
+## 🗓️ 记忆日记（定制功能）
+
+每天在自定义时间，拉取上游 LivingMemory 中当日（本地时间 00:00 至当前时刻）保存的记忆，由 LLM 总结成一篇日记，并发送到指定群聊。
+
+- **多套规则**：可添加多条发送规则，每条规则独立配置，例如「群聊 A 每天 21:00 总结群 A 的记忆发到群 A」「群聊 B 每天 08:00 总结所有记忆发到群 B」。
+- **总结范围**：所有记忆 / 单群聊（填群号）/ 单好友对话（填好友 ID）。
+- **人设注入**：总结提示词会拼接当前 AstrBot 人设（persona）的系统提示词，让日记符合 bot 的人设语气；内置默认提示词可直接使用，也可在配置中自定义。
+- **只读读取**：以只读模式打开上游记忆库，与上游插件安全共存；库文件缺失或读取异常时自动跳过并记录日志。请确保上游插件已成功初始化（已生成记忆库），首次使用前可先让上游运行一段时间写入记忆。
+
+配置入口：`插件 -> LivingMemory Ext -> 配置 -> diary_digest`。修改配置后请在插件管理页**重载插件**生效。
+
+## 📦 安装
+
+按 [AstrBot 插件开发指南](https://docs.astrbot.app/dev/star/plugin-new.html)：
+
+1. 本插件依赖上游 [LivingMemory](https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory) 已安装并正常写入记忆（记忆日记读取其记忆库）。
+2. 将本插件放入 `AstrBot/data/plugins/`（或从插件市场安装），重载 AstrBot。
+3. 进入插件配置页：在 `diary_digest` 板块打开开关、确认提示词，并添加至少一条发送规则（总结范围 + 总结时间 HH:MM + 发送群号）。
+
+可视化工作区入口为 `插件 -> LivingMemory Ext -> Pages -> dashboard`。插件 Pages 需要 **AstrBot 4.24.2 或更高版本**。
+
+## 🛠️ 开发
+
+开发规约、硬性要求与 AstrBot 插件规范见 [AGENTS.md](AGENTS.md)。
+
+## 许可证
+
+本项目基于 [AGPL-3.0](LICENSE) 发布，上游 LivingMemory 版权归 `lxfight-s-Astrbot-Plugins` 所有。

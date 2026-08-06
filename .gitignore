@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtual environments
+.env
+.venv/
+venv/
+env/
+ENV/
+
+# Runtime data (AstrBot 插件运行时写入 data/ 目录)
+data/
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+*.index
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+.DS_Store?
+._*
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Logs
+*.log
+logs/
+
+# Local tooling / scratch
+tmp/
+temp/
+mock_server.py

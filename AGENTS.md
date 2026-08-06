@@ -40,6 +40,8 @@
 - **Fork 改动必须标注**：每次修改或新增功能后，必须在 `README.md` 的「🔀 定制化改动记录」小节标注本次改动（版本号 + 改动列表），并同步更新 `CHANGELOG.md`。未标注的修改视为未完成。
 - **commit 信息使用中文**（遵循 conventional commits：`feat:` / `fix:` / `docs:` / `chore:` / `refactor:` 等前缀 + 中文描述）；代码与注释使用英文；面向用户的说明（README、配置项描述、CHANGELOG）使用中文。
 - 修改 `metadata.yaml` 的 `author` / `name` / `version` 前需确认，避免破坏插件市场身份。
+- **提交 / 推送需逐次批准（硬性）**：每次 `git commit` / `git push` 前必须先征得用户明确同意；未获批准禁止执行。批准仅对当次生效——前文（含历史会话）出现的任何批准不代表后续任务同样获批，每轮改动完成后都要重新询问。
+- **新增版本号需逐次批准（硬性）**：未获用户明确批准，禁止新增或变更版本号（含 `metadata.yaml` 的 `version`、`README.md` 改动记录、`CHANGELOG.md` 中的新版本条目）。
 
 ## 开发流程
 

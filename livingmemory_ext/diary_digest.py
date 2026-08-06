@@ -399,6 +399,7 @@ class DiaryDigestScheduler:
     def _resolve_db_path(self) -> Path:
         configured = (self._diary_config().get("memory_db_path") or "").strip()
         if configured:
+            # Relative path is resolved against the AstrBot working directory
             return Path(configured)
         try:
             from astrbot.api.star import StarTools

@@ -24,9 +24,9 @@
       },
       "memory_db_path": {
         "description": "上游记忆库文件路径",
-        "hint": "留空自动定位到上游插件的 data 目录",
+        "hint": "默认已填上游默认位置（data/plugin_data/astrbot_plugin_livingmemory/livingmemory.db，相对 AstrBot 运行目录）；上游使用自定义 data 目录时请修改，留空则自动定位",
         "type": "string",
-        "default": ""
+        "default": "data/plugin_data/astrbot_plugin_livingmemory/livingmemory.db"
       },
       "rules": {
         "description": "日记发送规则",
@@ -79,8 +79,11 @@
               },
               "platform": {
                 "description": "消息平台适配器名",
-                "hint": "如 aiocqhttp / telegram / discord，填群号时用于构造消息源",
+                "hint": "用于构造消息源（当前仅支持 aiocqhttp）",
                 "type": "string",
+                "options": [
+                  "aiocqhttp"
+                ],
                 "default": "aiocqhttp"
               }
             }

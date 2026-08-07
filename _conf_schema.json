@@ -61,7 +61,7 @@
               },
               "scope_target": {
                 "description": "范围目标（对话对象）",
-                "hint": "scope 为 group / friend 时下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）；也可手动填写 平台id:群号/好友ID，如 qqab:123456；all 时留空",
+                "hint": "scope 为 group / friend 时下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）；all 时留空",
                 "type": "string",
                 "options": [],
                 "default": ""
@@ -85,7 +85,7 @@
               },
               "send_to": {
                 "description": "发送位置（对话对象）",
-                "hint": "下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）；也可手动填写 平台id:群号，如 qqab:123456",
+                "hint": "下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）",
                 "type": "string",
                 "options": [],
                 "default": ""

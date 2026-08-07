@@ -19,7 +19,25 @@ from typing import Any
 import aiofiles
 import aiosqlite
 
-logger = logging.getLogger("livingmemory_ext.diary_digest")
+
+def get_logger(name: str) -> logging.Logger:
+    """Return a logger wired into the AstrBot WebUI log stream.
+
+    AstrBot only shows logs from its dedicated per-plugin loggers
+    (``astrbot.plugin.<name>``) in the WebUI log page; plain stdlib loggers
+    are written to the console only.  Use the AstrBot logger when the runtime
+    is available and fall back to a plain stdlib logger otherwise (e.g. unit
+    tests running without AstrBot).
+    """
+    try:
+        from astrbot.core.log import LogManager
+
+        return LogManager.get_plugin_logger(name)
+    except Exception:  # noqa: BLE001 - AstrBot runtime absent
+        return logging.getLogger(f"livingmemory_ext.{name}")
+
+
+logger = get_logger("astrbot_plugin_livingmemory_ext.diary_digest")
 
 UPSTREAM_PLUGIN_NAME = "astrbot_plugin_livingmemory"
 UPSTREAM_DB_FILE = "livingmemory.db"

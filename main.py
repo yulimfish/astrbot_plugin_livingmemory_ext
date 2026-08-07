@@ -8,16 +8,15 @@ plugin are summarized into a diary and sent to the configured group chat.
 from __future__ import annotations
 
 import asyncio
-import logging
 
 from astrbot.api.star import Context, Star, register
 
 # AstrBot loads plugins as `data.plugins.<plugin_dir>.main` (namespace package,
 # plugin dir is NOT on sys.path), so intra-plugin imports must be relative —
 # same style as the upstream LivingMemory plugin.
-from .livingmemory_ext.diary_digest import DiaryDigestScheduler
+from .livingmemory_ext.diary_digest import DiaryDigestScheduler, get_logger
 
-logger = logging.getLogger("livingmemory_ext")
+logger = get_logger("astrbot_plugin_livingmemory_ext")
 
 PLUGIN_NAME = "LivingMemory Ext"
 PLUGIN_AUTHOR = "yulimfish"

@@ -35,6 +35,7 @@
 - 配置项为独立板块 `diary_digest`，支持手动开关、自定义总结提示词（首次安装内置默认提示词），总结时自动注入当前 AstrBot 人设。
 - 依赖上游 LivingMemory 插件（读取其 `data/` 下的记忆库，只读）。
 - 双插件共存适配：核心包命名避开 `core/` 等通用顶层包名（防御性设计），上游记忆库为 WAL 模式，本插件以只读连接 + busy_timeout 并发读取。
+- 日志接入 AstrBot 日志体系：插件日志改用 AstrBot 专属 logger（`astrbot.plugin.*`），可在 WebUI「平台日志」页直接看到 `[DiaryDigest]` 运行日志，便于排查调度器是否触发。
 
 ### v0.1.0（项目初始化）
 

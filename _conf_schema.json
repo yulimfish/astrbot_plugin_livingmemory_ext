@@ -90,10 +90,12 @@
               },
               "platform": {
                 "description": "消息平台适配器名",
-                "hint": "用于构造消息源（当前仅支持 aiocqhttp）",
+                "hint": "用于构造消息源。在 WebUI「平台管理」查看实际适配器 id（如 aiocqhttp / qqab / qqofficial）",
                 "type": "string",
                 "options": [
-                  "aiocqhttp"
+                  "aiocqhttp",
+                  "qqab",
+                  "qqofficial"
                 ],
                 "default": "aiocqhttp"
               }

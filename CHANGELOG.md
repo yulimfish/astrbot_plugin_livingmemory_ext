@@ -8,6 +8,7 @@
 - 日记总结自动注入当前 AstrBot 人设（`persona_manager`），提示词可自定义（内置默认提示词）。
 - 上游记忆库以只读方式（`mode=ro`）读取，支持并发读取；库文件缺失或读取失败时安全降级跳过。
 - 日志接入 AstrBot 日志体系：改用 `astrbot.plugin.*` 专属 logger，`[DiaryDigest]` 运行日志可直接在 WebUI「平台日志」页查看（此前裸 logger 日志仅写入服务器控制台，WebUI 不可见）。
+- 消息平台适配器选项扩展：规则 `platform` 新增 `qqab` / `qqofficial`（原仅 `aiocqhttp`），解决 AstrBot `send_message` 按平台 id 匹配失败导致的日记消息静默丢弃问题。
 
 ## v0.1.0 (2026-08-07)
 

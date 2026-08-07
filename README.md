@@ -37,6 +37,7 @@
 - 双插件共存适配：核心包命名避开 `core/` 等通用顶层包名（防御性设计），上游记忆库为 WAL 模式，本插件以只读连接 + busy_timeout 并发读取。
 - 日志接入 AstrBot 日志体系：插件日志改用 AstrBot 专属 logger（`astrbot.plugin.*`），可在 WebUI「平台日志」页直接看到 `[DiaryDigest]` 运行日志，便于排查调度器是否触发。
 - 消息平台适配器支持多选：`platform` 配置项新增 `qqab` / `qqofficial` 选项（此前仅 `aiocqhttp`），发送目标需与 WebUI「平台管理」中的实际适配器 id 及真实群号一致，否则消息会被 AstrBot 静默丢弃。
+- 新增「日记发送目标」可视化页面（插件 Pages）：自动获取当前所有平台的全部群列表，支持输入群名 / 群号搜索过滤的下拉框，选择后一键保存到对应规则，无需手填 `platform` 与 `send_to`（页面入口：`插件 -> LivingMemory Ext -> Pages -> 日记发送目标`）。
 
 ### v0.1.0（项目初始化）
 

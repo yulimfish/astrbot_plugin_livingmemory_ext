@@ -60,9 +60,10 @@
                 "default": "all"
               },
               "scope_target": {
-                "description": "范围目标",
-                "hint": "scope 为 group 时填群号，friend 时填好友 ID，all 时留空",
+                "description": "范围目标（对话对象）",
+                "hint": "scope 为 group / friend 时下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）；也可手动填写 平台id:群号/好友ID，如 qqab:123456；all 时留空",
                 "type": "string",
+                "options": [],
                 "default": ""
               },
               "memory_range": {

@@ -73,43 +73,125 @@ def test_build_target_umo_formats(loader_env):
 # -- option merging ---------------------------------------------------------
 
 
-def test_merge_send_to_options_configured_values_first(loader_env):
-    merge_send_to_options = _diary(loader_env).merge_send_to_options
-    groups = [
+def test_merge_target_options_configured_values_first(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    conversations = [
         {
             "platform_id": "qqab",
-            "group_id": "1102457938",
-            "group_name": "记忆群",
+            "target_id": "1102457938",
+            "display_name": "记忆群",
+            "kind": "group",
         },
-        {"platform_id": "qqab", "group_id": "987654321", "group_name": "摸鱼群"},
+        {
+            "platform_id": "qqab",
+            "target_id": "987654321",
+            "display_name": "摸鱼群",
+            "kind": "group",
+        },
     ]
-    options, labels = merge_send_to_options(["qqab:1102457938"], groups)
+    options, labels = merge_target_options(["qqab:1102457938"], conversations)
     assert options == ["qqab:1102457938", "qqab:987654321"]
     assert labels == ["1102457938 [qqab]", "摸鱼群 (987654321) [qqab]"]
 
 
-def test_merge_send_to_options_deduplicates(loader_env):
-    merge_send_to_options = _diary(loader_env).merge_send_to_options
-    groups = [{"platform_id": "qqab", "group_id": "1102457938", "group_name": "记忆群"}]
-    options, _ = merge_send_to_options(["qqab:1102457938"], groups)
+def test_merge_target_options_friends_and_kinds(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    conversations = [
+        {
+            "platform_id": "qqab",
+            "target_id": "10001",
+            "display_name": "小明",
+            "kind": "friend",
+        },
+        {
+            "platform_id": "qqab",
+            "target_id": "20002",
+            "display_name": "摸鱼群",
+            "kind": "group",
+        },
+    ]
+    options, labels = merge_target_options([], conversations, kinds=("friend",))
+    assert options == ["qqab:10001"]
+    assert labels == ["[好友] 小明 (10001) [qqab]"]
+
+
+def test_merge_target_options_friend_without_name(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    conversations = [
+        {
+            "platform_id": "qqab",
+            "target_id": "10001",
+            "display_name": "",
+            "kind": "friend",
+        }
+    ]
+    options, labels = merge_target_options([], conversations, kinds=("group", "friend"))
+    assert options == ["qqab:10001"]
+    assert labels == ["[好友] 10001 [qqab]"]
+
+
+def test_merge_target_options_deduplicates(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    conversations = [
+        {
+            "platform_id": "qqab",
+            "target_id": "1102457938",
+            "display_name": "记忆群",
+            "kind": "group",
+        }
+    ]
+    options, _ = merge_target_options(["qqab:1102457938"], conversations)
     assert options == ["qqab:1102457938"]
 
 
-def test_merge_send_to_options_skips_broken_groups(loader_env):
-    merge_send_to_options = _diary(loader_env).merge_send_to_options
-    groups = [
-        {"platform_id": "qqab", "group_id": "", "group_name": "无群号"},
-        {"platform_id": "", "group_id": "123", "group_name": "无平台"},
+def test_merge_target_options_skips_broken_entries(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    conversations = [
+        {
+            "platform_id": "qqab",
+            "target_id": "",
+            "display_name": "无目标",
+            "kind": "group",
+        },
+        {
+            "platform_id": "",
+            "target_id": "123",
+            "display_name": "无平台",
+            "kind": "group",
+        },
     ]
-    options, _ = merge_send_to_options([], groups)
+    options, _ = merge_target_options([], conversations)
     assert options == []
 
 
-def test_merge_send_to_options_legacy_value_kept(loader_env):
-    merge_send_to_options = _diary(loader_env).merge_send_to_options
-    options, labels = merge_send_to_options(["123456"], [])
+def test_merge_target_options_legacy_value_kept(loader_env):
+    merge_target_options = _diary(loader_env).merge_target_options
+    options, labels = merge_target_options(["123456"], [])
     assert options == ["123456"]
     assert labels == ["123456 [aiocqhttp]"]
+
+
+# -- scope target resolution -------------------------------------------------
+
+
+def test_build_rule_scope_like(loader_env):
+    build_rule_scope_like = _diary(loader_env).build_rule_scope_like
+    assert build_rule_scope_like({"scope": "all"}) is None
+    assert (
+        build_rule_scope_like({"scope": "group", "scope_target": "123"})
+        == "aiocqhttp:GroupMessage:123%"
+    )
+    assert (
+        build_rule_scope_like(
+            {"scope": "group", "scope_target": "123", "send_to": "qqab:456"}
+        )
+        == "qqab:GroupMessage:123%"
+    )
+    assert (
+        build_rule_scope_like({"scope": "friend", "scope_target": "qqab:999"})
+        == "qqab:PrivateMessage:999%"
+    )
+    assert build_rule_scope_like({"scope": "group", "scope_target": ""}) is None
 
 
 # -- schema injection -------------------------------------------------------
@@ -121,19 +203,28 @@ class _FakeMeta:
 
 
 class _FakeClient:
-    def __init__(self, groups):
-        self._groups = groups
+    def __init__(self, groups=None, friends=None):
+        self._groups = groups or []
+        self._friends = friends or []
 
     async def get_group_list(self):
         return self._groups
 
+    async def get_friend_list(self):
+        return self._friends
+
 
 class _FakePlatform:
     def __init__(
-        self, platform_id="qqab", groups=None, meta_error=None, client_error=None
+        self,
+        platform_id="qqab",
+        groups=None,
+        friends=None,
+        meta_error=None,
+        client_error=None,
     ):
         self._platform_id = platform_id
-        self._client = _FakeClient(groups or [])
+        self._client = _FakeClient(groups, friends)
         self._meta_error = meta_error
         self._client_error = client_error
 
@@ -169,36 +260,56 @@ def _build_plugin(loader_env, schema, platforms=()):
     return plugin
 
 
-def test_list_groups_aggregates_platforms(loader_env):
+def test_list_conversations_aggregates_platforms(loader_env):
     plugin = _build_plugin(
         loader_env,
         {},
         platforms=[
             _FakePlatform(
                 "qqab",
-                [
+                groups=[
                     {"group_id": 1102457938, "group_name": "记忆群"},
                     {"group_id": 987654321, "group_name": "摸鱼群"},
                 ],
+                friends=[{"user_id": 10001, "nickname": "小明"}],
             ),
             _FakePlatform("qqofficial", []),
         ],
     )
-    groups = asyncio.run(plugin._list_groups())
-    assert groups == [
-        {"platform_id": "qqab", "group_id": "1102457938", "group_name": "记忆群"},
-        {"platform_id": "qqab", "group_id": "987654321", "group_name": "摸鱼群"},
+    conversations = asyncio.run(plugin._list_conversations())
+    assert conversations == [
+        {
+            "platform_id": "qqab",
+            "target_id": "1102457938",
+            "display_name": "记忆群",
+            "kind": "group",
+        },
+        {
+            "platform_id": "qqab",
+            "target_id": "987654321",
+            "display_name": "摸鱼群",
+            "kind": "group",
+        },
+        {
+            "platform_id": "qqab",
+            "target_id": "10001",
+            "display_name": "小明",
+            "kind": "friend",
+        },
     ]
 
 
-def test_sync_schema_options_injects_dropdown(loader_env):
+def test_sync_schema_options_injects_dropdowns(loader_env):
     schema = {
         "diary_digest": {
             "items": {
                 "rules": {
                     "templates": {
                         "rule": {
-                            "items": {"send_to": {"type": "string", "options": []}}
+                            "items": {
+                                "send_to": {"type": "string", "options": []},
+                                "scope_target": {"type": "string", "options": []},
+                            }
                         }
                     }
                 }
@@ -211,16 +322,20 @@ def test_sync_schema_options_injects_dropdown(loader_env):
         platforms=[
             _FakePlatform(
                 "qqab",
-                [{"group_id": 1102457938, "group_name": "记忆群"}],
+                groups=[{"group_id": 1102457938, "group_name": "记忆群"}],
+                friends=[{"user_id": 10001, "nickname": "小明"}],
             )
         ],
     )
     asyncio.run(plugin._sync_schema_options())
-    send_to = schema["diary_digest"]["items"]["rules"]["templates"]["rule"]["items"][
-        "send_to"
+    items = schema["diary_digest"]["items"]["rules"]["templates"]["rule"]["items"]
+    assert items["send_to"]["options"] == ["qqab:1102457938"]
+    assert items["send_to"]["labels"] == ["记忆群 (1102457938) [qqab]"]
+    assert items["scope_target"]["options"] == ["qqab:1102457938", "qqab:10001"]
+    assert items["scope_target"]["labels"] == [
+        "记忆群 (1102457938) [qqab]",
+        "[好友] 小明 (10001) [qqab]",
     ]
-    assert send_to["options"] == ["qqab:1102457938"]
-    assert send_to["labels"] == ["记忆群 (1102457938) [qqab]"]
 
 
 def test_sync_schema_options_merges_configured_values(loader_env):
@@ -272,7 +387,7 @@ def test_sync_schema_options_send_to_not_dict(loader_env):
     assert asyncio.run(plugin._sync_schema_options()) is None
 
 
-def test_list_groups_skips_broken_platforms(loader_env):
+def test_list_conversations_skips_broken_platforms(loader_env):
     plugin = _build_plugin(
         loader_env,
         {},
@@ -281,13 +396,18 @@ def test_list_groups_skips_broken_platforms(loader_env):
             _FakePlatform("no_client", client_error=RuntimeError("client down")),
             _FakePlatform(
                 "qqab",
-                [{"group_id": 1102457938, "group_name": "记忆群"}],
+                groups=[{"group_id": 1102457938, "group_name": "记忆群"}],
             ),
         ],
     )
-    groups = asyncio.run(plugin._list_groups())
-    assert groups == [
-        {"platform_id": "qqab", "group_id": "1102457938", "group_name": "记忆群"}
+    conversations = asyncio.run(plugin._list_conversations())
+    assert conversations == [
+        {
+            "platform_id": "qqab",
+            "target_id": "1102457938",
+            "display_name": "记忆群",
+            "kind": "group",
+        }
     ]
 
 

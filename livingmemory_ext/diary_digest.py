@@ -201,6 +201,20 @@ def build_target_umo(rule: dict) -> str:
     return f"{platform}:{GROUP_UMO_KEY}:{target}"
 
 
+def build_rule_scope_like(rule: dict) -> str | None:
+    """SQL LIKE pattern for a rule's memory scope, or None for 'all'.
+
+    The scope target may carry its own platform (``platform:target``);
+    a bare legacy target inherits the platform of the rule's send target.
+    """
+    legacy_platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
+    send_platform, _ = parse_send_to(rule.get("send_to"), legacy_platform)
+    scope_platform, scope_target = parse_send_to(
+        rule.get("scope_target"), send_platform
+    )
+    return build_scope_like(rule.get("scope") or "all", scope_platform, scope_target)
+
+
 def target_display_label(value: str) -> str:
     """Human-readable label for a configured send_to value in the dropdown."""
     platform, target = parse_send_to(value)
@@ -209,15 +223,20 @@ def target_display_label(value: str) -> str:
     return f"{target} [{platform}]"
 
 
-def merge_send_to_options(
-    configured_values: list[str], groups: list[dict]
+def merge_target_options(
+    configured_values: list[str],
+    conversations: list[dict],
+    kinds: tuple[str, ...] = ("group",),
 ) -> tuple[list[str], list[str]]:
-    """Merge configured values and live groups into (options, labels).
+    """Merge configured values and live conversations into (options, labels).
 
-    ``options[i]`` is the stored value (``platform:group_id``) and
+    ``options[i]`` is the stored value (``platform:target_id``) and
     ``labels[i]`` its human-readable title.  Configured values keep the
     front positions (deduplicated) so the current selection of every rule
-    stays visible in the dropdown; live groups are appended afterwards.
+    stays visible in the dropdown; live conversations are appended
+    afterwards.  Only conversations whose ``kind`` is listed in ``kinds``
+    are included (``send_to`` accepts groups only, ``scope_target`` also
+    accepts friends).
     """
     options: list[str] = []
     labels: list[str] = []
@@ -228,20 +247,28 @@ def merge_send_to_options(
             seen.add(value)
             options.append(value)
             labels.append(target_display_label(value))
-    for group in groups:
-        platform_id = str(group.get("platform_id") or "").strip()
-        group_id = str(group.get("group_id") or "").strip()
-        if not platform_id or not group_id:
+    for conversation in conversations:
+        kind = str(conversation.get("kind") or "group").strip()
+        if kind not in kinds:
             continue
-        value = f"{platform_id}:{group_id}"
+        platform_id = str(conversation.get("platform_id") or "").strip()
+        target_id = str(conversation.get("target_id") or "").strip()
+        if not platform_id or not target_id:
+            continue
+        value = f"{platform_id}:{target_id}"
         if value in seen:
             continue
         seen.add(value)
         options.append(value)
-        group_name = str(group.get("group_name") or "").strip()
-        labels.append(
-            f"{group_name} ({group_id}) [{platform_id}]" if group_name else value
-        )
+        display_name = str(conversation.get("display_name") or "").strip()
+        if kind == "friend":
+            label = f"[好友] {display_name} ({target_id}) [{platform_id}]"
+            label = label if display_name else f"[好友] {target_id} [{platform_id}]"
+        elif display_name:
+            label = f"{display_name} ({target_id}) [{platform_id}]"
+        else:
+            label = value
+        labels.append(label)
     return options, labels
 
 
@@ -489,13 +516,7 @@ class DiaryDigestScheduler:
     async def _fetch_memories(self, rule: dict) -> list[dict]:
         db_path = self._resolve_db_path()
         logger.info("[DiaryDigest] reading memories from %s", db_path)
-        legacy_platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
-        send_platform, _ = parse_send_to(rule.get("send_to"), legacy_platform)
-        scope_like = build_scope_like(
-            rule.get("scope") or "all",
-            send_platform,
-            rule.get("scope_target") or "",
-        )
+        scope_like = build_rule_scope_like(rule)
         if scope_like is None and (rule.get("scope") or "all") != "all":
             logger.warning(
                 "[DiaryDigest] diary rule %s has invalid scope target, skip",

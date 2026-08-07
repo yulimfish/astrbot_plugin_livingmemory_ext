@@ -165,15 +165,84 @@ def build_scope_like(scope: str, platform: str, target: str) -> str | None:
     return None
 
 
+def parse_send_to(
+    value: Any, default_platform: str = DEFAULT_PLATFORM
+) -> tuple[str, str]:
+    """Split a send_to value into (platform, target).
+
+    Accepted formats:
+
+    - ``"123456"``                    -> (default_platform, "123456")   (legacy bare group id)
+    - ``"qqab:123456"``               -> ("qqab", "123456")             (merged platform:id)
+    - ``"qqab:GroupMessage:123456"``  -> ("qqab", "123456")             (legacy full UMO)
+
+    Empty input yields (default_platform, "").
+    """
+    raw = (value or "").strip()
+    if not raw:
+        return default_platform, ""
+    parts = [part.strip() for part in raw.split(":")]
+    if len(parts) >= 3 and parts[1] in (GROUP_UMO_KEY, PRIVATE_UMO_KEY):
+        return parts[0], parts[2]
+    if len(parts) == 2:
+        return parts[0], parts[1]
+    return default_platform, parts[0]
+
+
 def build_target_umo(rule: dict) -> str:
     """Unified message origin of the diary's send target (group chat)."""
     send_to = (rule.get("send_to") or "").strip()
     if not send_to:
         return ""
-    if ":" in send_to:
-        return send_to
-    platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
-    return f"{platform}:{GROUP_UMO_KEY}:{send_to}"
+    legacy_platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
+    platform, target = parse_send_to(send_to, legacy_platform)
+    if not target:
+        return ""
+    return f"{platform}:{GROUP_UMO_KEY}:{target}"
+
+
+def target_display_label(value: str) -> str:
+    """Human-readable label for a configured send_to value in the dropdown."""
+    platform, target = parse_send_to(value)
+    if not target:
+        return value
+    return f"{target} [{platform}]"
+
+
+def merge_send_to_options(
+    configured_values: list[str], groups: list[dict]
+) -> tuple[list[str], list[str]]:
+    """Merge configured values and live groups into (options, labels).
+
+    ``options[i]`` is the stored value (``platform:group_id``) and
+    ``labels[i]`` its human-readable title.  Configured values keep the
+    front positions (deduplicated) so the current selection of every rule
+    stays visible in the dropdown; live groups are appended afterwards.
+    """
+    options: list[str] = []
+    labels: list[str] = []
+    seen: set[str] = set()
+    for value in configured_values:
+        value = (value or "").strip()
+        if value and value not in seen:
+            seen.add(value)
+            options.append(value)
+            labels.append(target_display_label(value))
+    for group in groups:
+        platform_id = str(group.get("platform_id") or "").strip()
+        group_id = str(group.get("group_id") or "").strip()
+        if not platform_id or not group_id:
+            continue
+        value = f"{platform_id}:{group_id}"
+        if value in seen:
+            continue
+        seen.add(value)
+        options.append(value)
+        group_name = str(group.get("group_name") or "").strip()
+        labels.append(
+            f"{group_name} ({group_id}) [{platform_id}]" if group_name else value
+        )
+    return options, labels
 
 
 async def fetch_day_memories(
@@ -339,7 +408,8 @@ class DiaryDigestScheduler:
             return template_key
         name = rule.get("name") or ""
         scope = rule.get("scope") or ""
-        platform = rule.get("platform") or ""
+        legacy_platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
+        platform, _ = parse_send_to(rule.get("send_to"), legacy_platform)
         target = rule.get("scope_target") or ""
         time_str = rule.get("time") or ""
         return f"custom|{name}|{scope}|{platform}|{target}|{time_str}"
@@ -419,9 +489,11 @@ class DiaryDigestScheduler:
     async def _fetch_memories(self, rule: dict) -> list[dict]:
         db_path = self._resolve_db_path()
         logger.info("[DiaryDigest] reading memories from %s", db_path)
+        legacy_platform = (rule.get("platform") or DEFAULT_PLATFORM).strip()
+        send_platform, _ = parse_send_to(rule.get("send_to"), legacy_platform)
         scope_like = build_scope_like(
             rule.get("scope") or "all",
-            (rule.get("platform") or DEFAULT_PLATFORM).strip(),
+            send_platform,
             rule.get("scope_target") or "",
         )
         if scope_like is None and (rule.get("scope") or "all") != "all":

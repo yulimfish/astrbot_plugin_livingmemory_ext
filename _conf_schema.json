@@ -83,21 +83,11 @@
                 "default": "22:00"
               },
               "send_to": {
-                "description": "发送位置",
-                "hint": "填群号（如 123456），也可填完整消息源如 aiocqhttp:GroupMessage:123456",
+                "description": "发送位置（对话对象）",
+                "hint": "下拉选择对话对象（支持输入搜索过滤，选项由插件自动从当前平台拉取）；也可手动填写 平台id:群号，如 qqab:123456",
                 "type": "string",
+                "options": [],
                 "default": ""
-              },
-              "platform": {
-                "description": "消息平台适配器名",
-                "hint": "用于构造消息源。在 WebUI「平台管理」查看实际适配器 id（如 aiocqhttp / qqab / qqofficial）",
-                "type": "string",
-                "options": [
-                  "aiocqhttp",
-                  "qqab",
-                  "qqofficial"
-                ],
-                "default": "aiocqhttp"
               }
             }
           }

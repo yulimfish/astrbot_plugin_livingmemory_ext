@@ -37,7 +37,7 @@
 - 双插件共存适配：核心包命名避开 `core/` 等通用顶层包名（防御性设计），上游记忆库为 WAL 模式，本插件以只读连接 + busy_timeout 并发读取。
 - 日志接入 AstrBot 日志体系：插件日志改用 AstrBot 专属 logger（`astrbot.plugin.*`），可在 WebUI「平台日志」页直接看到 `[DiaryDigest]` 运行日志，便于排查调度器是否触发。
 - 消息平台适配器支持多选：`platform` 配置项新增 `qqab` / `qqofficial` 选项（此前仅 `aiocqhttp`），发送目标需与 WebUI「平台管理」中的实际适配器 id 及真实群号一致，否则消息会被 AstrBot 静默丢弃。
-- 新增「日记发送目标」可视化页面（插件 Pages）：自动获取当前所有平台的全部群列表，支持输入群名 / 群号搜索过滤的下拉框，选择后一键保存到对应规则，无需手填 `platform` 与 `send_to`（页面入口：`插件 -> LivingMemory Ext -> Pages -> 日记发送目标`）。
+- 发送位置改为动态下拉选择：规则配置中「发送位置」与「消息平台」合并为一项 `send_to`，下拉选项由插件自动从当前平台拉取全部群聊（显示群名，支持输入搜索过滤），无需手填平台与群号；旧配置（纯群号 / 完整消息源格式）自动兼容。注：下拉依赖适配器提供群列表 API（aiocqhttp 支持；无该 API 的适配器下拉将只有已配置值，可手动填写 `平台id:群号`）。
 
 ### v0.1.0（项目初始化）
 
@@ -65,9 +65,7 @@
 
 1. 本插件依赖上游 [LivingMemory](https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory) 已安装并正常写入记忆（记忆日记读取其记忆库）。
 2. 将本插件放入 `AstrBot/data/plugins/`（或从插件市场安装），重载 AstrBot。
-3. 进入插件配置页：在 `diary_digest` 板块打开开关、确认提示词，并添加至少一条发送规则（总结范围 + 总结时间 HH:MM + 发送群号）。
-
-可视化工作区入口为 `插件 -> LivingMemory Ext -> Pages -> dashboard`。插件 Pages 需要 **AstrBot 4.24.2 或更高版本**。
+3. 进入插件配置页：在 `diary_digest` 板块打开开关、确认提示词，并添加至少一条发送规则（总结范围 + 总结时间 HH:MM + 发送位置下拉）。
 
 ## 🛠️ 开发
 

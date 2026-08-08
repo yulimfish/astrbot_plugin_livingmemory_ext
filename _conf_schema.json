@@ -89,6 +89,12 @@
                 "type": "string",
                 "options": [],
                 "default": ""
+              },
+              "extra_prompt": {
+                "description": "补充提示词",
+                "hint": "可选。针对本规则的额外要求，会拼接在插件级日记提示词之后",
+                "type": "text",
+                "default": ""
               }
             }
           }

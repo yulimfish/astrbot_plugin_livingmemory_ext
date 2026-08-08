@@ -579,6 +579,9 @@ class DiaryDigestScheduler:
     async def _summarize(self, rule: dict, memories: list[dict]) -> str:
         diary_cfg = self._diary_config()
         prompt = (diary_cfg.get("prompt") or "").strip() or DEFAULT_DIARY_PROMPT
+        extra_prompt = (rule.get("extra_prompt") or "").strip()
+        if extra_prompt:
+            prompt = f"{prompt}\n\n{extra_prompt}"
         persona_prompt = await self._get_persona_prompt(rule)
         system_prompt = prompt
         if persona_prompt:

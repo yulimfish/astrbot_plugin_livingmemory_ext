@@ -45,7 +45,7 @@ PLUGIN_NAME = "astrbot_plugin_livingmemory_ext"
 STATE_FILE = "diary_last_run.json"
 
 GROUP_UMO_KEY = "GroupMessage"
-PRIVATE_UMO_KEY = "PrivateMessage"
+FRIEND_UMO_KEY = "FriendMessage"
 DEFAULT_PLATFORM = "aiocqhttp"
 
 MEMORY_RANGE_TODAY = "today"
@@ -149,7 +149,12 @@ def resolve_memory_range(
 
 
 def build_scope_like(scope: str, platform: str, target: str) -> str | None:
-    """SQL LIKE pattern for the session_id scope filter, or None for 'all'."""
+    """SQL LIKE pattern for the session_id scope filter, or None for 'all'.
+
+    The UMO platform segment is matched loosely (``%:``) so that a
+    third-party adapter whose UMO platform segment differs from the platform
+    meta id still matches; the message-type and target segments stay strict.
+    """
     scope = (scope or "all").strip().lower()
     target = (target or "").strip()
     if scope == "all":
@@ -157,11 +162,11 @@ def build_scope_like(scope: str, platform: str, target: str) -> str | None:
     if scope == "group":
         if not target:
             return None
-        return f"{platform}:{GROUP_UMO_KEY}:{target}%"
+        return f"%:{GROUP_UMO_KEY}:{target}%"
     if scope == "friend":
         if not target:
             return None
-        return f"{platform}:{PRIVATE_UMO_KEY}:{target}%"
+        return f"%:{FRIEND_UMO_KEY}:{target}%"
     return None
 
 
@@ -182,7 +187,7 @@ def parse_send_to(
     if not raw:
         return default_platform, ""
     parts = [part.strip() for part in raw.split(":")]
-    if len(parts) >= 3 and parts[1] in (GROUP_UMO_KEY, PRIVATE_UMO_KEY):
+    if len(parts) >= 3 and parts[1] in (GROUP_UMO_KEY, FRIEND_UMO_KEY):
         return parts[0], parts[2]
     if len(parts) == 2:
         return parts[0], parts[1]
@@ -281,14 +286,22 @@ async def fetch_day_memories(
     """Fetch today's active memories from the upstream database (read-only)."""
     if not Path(db_path).exists():
         return []
+    # The upstream may store group memories under the global scope
+    # (session_id = "livingmemory:global") while keeping the real origin in
+    # ``metadata.source_session_id``; match both so group rules still find
+    # them.  For normally-stored memories source_session_id is NULL or equal
+    # to session_id, so this never pulls in another group.
     sql = _MEMORY_QUERY_SQL.format(
-        scope_filter="AND json_extract(metadata, '$.session_id') LIKE ?"
+        scope_filter=(
+            "AND (json_extract(metadata, '$.session_id') LIKE ? "
+            "OR json_extract(metadata, '$.source_session_id') LIKE ?)"
+        )
         if scope_like
         else ""
     )
     params: list = [start_ts, end_ts]
     if scope_like:
-        params.append(scope_like)
+        params.extend([scope_like, scope_like])
     try:
         uri = f"{Path(db_path).resolve().as_uri()}?mode=ro"
         async with aiosqlite.connect(uri, uri=True) as db:
@@ -306,6 +319,22 @@ async def fetch_day_memories(
             cursor = await db.execute(sql, params)
             rows = await cursor.fetchall()
             await cursor.close()
+            if not rows and scope_like:
+                probe = await db.execute(
+                    "SELECT DISTINCT json_extract(metadata, '$.session_id') AS sid "
+                    "FROM documents "
+                    "WHERE COALESCE(json_extract(metadata, '$.status'), 'active') = 'active' "
+                    "LIMIT 5"
+                )
+                samples = [r["sid"] for r in await probe.fetchall()]
+                await probe.close()
+                logger.warning(
+                    "[DiaryDigest] scope filter %r matched 0 active memories in %s; "
+                    "sample active session_id values: %s",
+                    scope_like,
+                    db_path,
+                    samples,
+                )
         return [dict(row) for row in rows]
     except Exception as exc:  # noqa: BLE001 - degrade gracefully
         logger.error(

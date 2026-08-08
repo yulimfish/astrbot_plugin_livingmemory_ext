@@ -11,6 +11,7 @@
 - 消息平台适配器选项扩展：规则 `platform` 新增 `qqab` / `qqofficial`（原仅 `aiocqhttp`），解决 AstrBot `send_message` 按平台 id 匹配失败导致的日记消息静默丢弃问题。
 - 发送位置改为动态下拉选择：`send_to` 与 `platform` 合并为「发送位置」一项，下拉选项由插件自动从当前平台拉取全部群聊（显示群名、支持输入搜索过滤），无需手填平台与群号，避免填错导致消息静默丢弃；旧配置（纯群号 / 完整消息源格式）自动兼容。
 - 「范围目标」同步改为动态下拉选择：`scope_target` 与发送位置同一套机制，选项自动拉取当前平台的全部群聊与好友（带「群 / 好友」标识），支持输入搜索过滤；纯群号旧配置自动兼容（平台继承自发送位置）。
+- 修复群组 / 好友日记总结 0 条：好友类型键改为 AstrBot 标准 `FriendMessage`（原 `PrivateMessage` 恒失败）；会话 LIKE 不再锁死平台段；上游按全局范围（`livingmemory:global`）写库时按 `metadata.source_session_id` 兜底归类到对应群/好友。新增只读诊断脚本 `scripts/diagnose_memories.py`。
 
 ## v0.1.0 (2026-08-07)
 

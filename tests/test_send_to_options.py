@@ -38,7 +38,7 @@ def test_parse_send_to_merged_format(loader_env):
 def test_parse_send_to_legacy_umo(loader_env):
     parse_send_to = _diary(loader_env).parse_send_to
     assert parse_send_to("qqab:GroupMessage:1102457938") == ("qqab", "1102457938")
-    assert parse_send_to("aiocqhttp:PrivateMessage:42") == ("aiocqhttp", "42")
+    assert parse_send_to("aiocqhttp:FriendMessage:42") == ("aiocqhttp", "42")
 
 
 def test_parse_send_to_empty(loader_env):
@@ -179,17 +179,17 @@ def test_build_rule_scope_like(loader_env):
     assert build_rule_scope_like({"scope": "all"}) is None
     assert (
         build_rule_scope_like({"scope": "group", "scope_target": "123"})
-        == "aiocqhttp:GroupMessage:123%"
+        == "%:GroupMessage:123%"
     )
     assert (
         build_rule_scope_like(
             {"scope": "group", "scope_target": "123", "send_to": "qqab:456"}
         )
-        == "qqab:GroupMessage:123%"
+        == "%:GroupMessage:123%"
     )
     assert (
         build_rule_scope_like({"scope": "friend", "scope_target": "qqab:999"})
-        == "qqab:PrivateMessage:999%"
+        == "%:FriendMessage:999%"
     )
     assert build_rule_scope_like({"scope": "group", "scope_target": ""}) is None
 

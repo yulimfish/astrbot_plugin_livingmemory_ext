@@ -174,12 +174,8 @@ def test_state_corrupted(tmp_path):
 def test_build_scope_like():
     assert build_scope_like("all", "aiocqhttp", "") is None
     assert build_scope_like("", "aiocqhttp", "") is None
-    assert (
-        build_scope_like("group", "aiocqhttp", "123") == "aiocqhttp:GroupMessage:123%"
-    )
-    assert (
-        build_scope_like("friend", "telegram", "999") == "telegram:PrivateMessage:999%"
-    )
+    assert build_scope_like("group", "aiocqhttp", "123") == "%:GroupMessage:123%"
+    assert build_scope_like("friend", "telegram", "999") == "%:FriendMessage:999%"
     assert build_scope_like("group", "aiocqhttp", "") is None
     assert build_scope_like("unknown", "aiocqhttp", "1") is None
 
@@ -244,16 +240,33 @@ def test_fetch_day_memories(tmp_path):
                     "status": "active",
                 },
             ),
+            (
+                "m5",
+                "global 范围但来源是本群的记忆",
+                {
+                    "create_time": today_ts - 30,
+                    "session_id": "livingmemory:global",
+                    "source_session_id": "aiocqhttp:GroupMessage:123",
+                    "status": "active",
+                },
+            ),
         ],
     )
 
     all_rows = asyncio.run(fetch_day_memories(db, start_ts, end_ts))
-    assert [r["text"] for r in all_rows] == ["早上和群友讨论了新插件", "下午完成了代码"]
+    assert {r["text"] for r in all_rows} == {
+        "早上和群友讨论了新插件",
+        "下午完成了代码",
+        "global 范围但来源是本群的记忆",
+    }
 
     group_rows = asyncio.run(
         fetch_day_memories(db, start_ts, end_ts, "aiocqhttp:GroupMessage:123%")
     )
-    assert [r["text"] for r in group_rows] == ["早上和群友讨论了新插件"]
+    assert {r["text"] for r in group_rows} == {
+        "早上和群友讨论了新插件",
+        "global 范围但来源是本群的记忆",
+    }
 
     missing = asyncio.run(fetch_day_memories(tmp_path / "nope.db", start_ts, end_ts))
     assert missing == []

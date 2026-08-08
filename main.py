@@ -132,9 +132,16 @@ class LivingMemoryExtPlugin(Star):
             conversations,
             kinds=("group", "friend"),
         )
-        logger.info(
-            "synced %d conversation options into config schema", len(conversations)
-        )
+        if conversations:
+            logger.info(
+                "synced %d conversation options into config schema",
+                len(conversations),
+            )
+        else:
+            logger.warning(
+                "no conversations resolved from any platform; dropdown options "
+                "will stay empty (check adapter connectivity / platform config)"
+            )
 
     def _inject_field_options(
         self,

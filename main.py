@@ -8,8 +8,10 @@ plugin are summarized into a diary and sent to the configured group chat.
 from __future__ import annotations
 
 import asyncio
+from pathlib import Path
 from typing import Any
 
+from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Context, Star, register
 
 # AstrBot loads plugins as `data.plugins.<plugin_dir>.main` (namespace package,
@@ -19,6 +21,12 @@ from .livingmemory_ext.diary_digest import (
     DiaryDigestScheduler,
     get_logger,
     merge_target_options,
+)
+from .livingmemory_ext.target_cache import (
+    event_to_conversation,
+    load_conversations,
+    merge_conversation,
+    save_conversations,
 )
 
 logger = get_logger("astrbot_plugin_livingmemory_ext")
@@ -51,6 +59,7 @@ SCHEMA_SCOPE_TARGET_PATH = (
 )
 SCHEMA_SYNC_START_DELAY = 5.0
 SCHEMA_SYNC_INTERVAL = 600.0
+QQOFFICIAL_TARGETS_FILE = "qqofficial_targets.json"
 
 
 @register(
@@ -67,7 +76,14 @@ class LivingMemoryExtPlugin(Star):
         self._scheduler: DiaryDigestScheduler | None = None
         self._scheduler_start_task: asyncio.Task | None = None
         self._schema_sync_task: asyncio.Task | None = None
+        self._target_cache_load_task: asyncio.Task | None = None
+        self._target_cache_lock = asyncio.Lock()
+        self._target_cache_loaded = False
+        self._qqofficial_targets: list[dict[str, str]] = []
         try:
+            self._target_cache_load_task = asyncio.create_task(
+                self._load_qqofficial_targets()
+            )
             self._schema_sync_task = asyncio.create_task(self._schema_options_loop())
         except RuntimeError as exc:
             logger.warning(
@@ -98,6 +114,7 @@ class LivingMemoryExtPlugin(Star):
         platform adapters time to connect after plugin load.
         """
         await asyncio.sleep(SCHEMA_SYNC_START_DELAY)
+        await self._await_target_cache_load()
         while True:
             try:
                 await self._sync_schema_options()
@@ -118,6 +135,7 @@ class LivingMemoryExtPlugin(Star):
             except Exception as exc:  # noqa: BLE001 - persistence best effort
                 logger.warning("failed to persist normalized send_to values: %s", exc)
         conversations = await self._list_conversations()
+        conversations.extend(getattr(self, "_qqofficial_targets", []))
         self._inject_field_options(
             schema,
             SCHEMA_SEND_TO_PATH,
@@ -163,6 +181,72 @@ class LivingMemoryExtPlugin(Star):
         options, labels = merge_target_options(configured_values, conversations, kinds)
         field_schema["options"] = options
         field_schema["labels"] = labels
+
+    # -- QQ Official observed-target cache ---------------------------------
+
+    def _qqofficial_targets_path(self) -> Path:
+        """Resolve the data/ path used for QQ Official group-openid targets."""
+        try:
+            from astrbot.api.star import StarTools
+
+            return Path(StarTools.get_data_dir(PLUGIN_NAME)) / QQOFFICIAL_TARGETS_FILE
+        except Exception:  # noqa: BLE001 - AstrBot runtime absent
+            return Path("data") / QQOFFICIAL_TARGETS_FILE
+
+    async def _load_qqofficial_targets(self) -> None:
+        self._qqofficial_targets = await load_conversations(
+            self._qqofficial_targets_path()
+        )
+        self._target_cache_loaded = True
+
+    async def _await_target_cache_load(self) -> None:
+        task = self._target_cache_load_task
+        if task is not None and task is not asyncio.current_task():
+            try:
+                await task
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 - cache must not break plugin
+                logger.warning("failed to load QQ Official target cache: %s", exc)
+        elif not self._target_cache_loaded:
+            await self._load_qqofficial_targets()
+
+    async def _save_qqofficial_targets(self) -> None:
+        try:
+            await save_conversations(
+                self._qqofficial_targets_path(), self._qqofficial_targets
+            )
+        except Exception as exc:  # noqa: BLE001 - cache persistence is best effort
+            logger.warning("failed to save QQ Official target cache: %s", exc)
+
+    @filter.event_message_type(filter.EventMessageType.GROUP_MESSAGE)
+    @filter.platform_adapter_type(
+        filter.PlatformAdapterType.QQOFFICIAL
+        | filter.PlatformAdapterType.QQOFFICIAL_WEBHOOK
+    )
+    async def capture_qqofficial_target(self, event: AstrMessageEvent) -> None:
+        """Remember QQ Official group-openids because its API cannot list groups."""
+        try:
+            await self._remember_qqofficial_target(event)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("failed to capture QQ Official conversation target")
+
+    async def _remember_qqofficial_target(self, event: AstrMessageEvent) -> None:
+        conversation = event_to_conversation(event)
+        if conversation is None:
+            return
+        await self._await_target_cache_load()
+        async with self._target_cache_lock:
+            targets, changed = merge_conversation(
+                self._qqofficial_targets, conversation
+            )
+            if not changed:
+                return
+            self._qqofficial_targets = targets
+            await self._save_qqofficial_targets()
+        await self._sync_schema_options()
 
     def _normalize_legacy_send_to(self) -> bool:
         """Rewrite legacy "bare group id + platform" rules into merged format.
@@ -266,6 +350,13 @@ class LivingMemoryExtPlugin(Star):
 
     async def terminate(self):
         """Shut down the background tasks on plugin unload."""
+        if self._target_cache_load_task:
+            self._target_cache_load_task.cancel()
+            try:
+                await self._target_cache_load_task
+            except (asyncio.CancelledError, Exception):  # noqa: BLE001
+                logger.debug("QQ Official target-cache task interrupted")
+            self._target_cache_load_task = None
         if self._schema_sync_task:
             self._schema_sync_task.cancel()
             try:

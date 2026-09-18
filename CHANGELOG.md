@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- 支持 QQ 官方机器人 WebSocket（`qq_official`）与 Webhook（`qq_official_webhook`）：插件元数据新增平台声明。
+- QQ 官方群/频道目标使用 AstrBot 事件提供的实际平台实例 ID 与 `group_openid` / `channel_id`，不使用传统 QQ 群号。
+- QQ 官方 API 无法枚举群聊时，插件会缓存本次运行中已收到消息的群/频道到自身 `data/`，并更新「发送位置」与「范围目标」下拉；重启 AstrBot 后需要目标群/频道先发送一条消息，以恢复官方适配器的主动发送场景。
+
 ## v0.1.1 (2026-08-07)
 
 - 新增「记忆日记」功能：定时拉取上游 LivingMemory 当日记忆，经 LLM 总结为日记并发送到指定群聊。

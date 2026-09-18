@@ -27,6 +27,12 @@
 
 > 规则：每次功能改动必须在此处标注（版本号 + 改动列表），并同步更新 [CHANGELOG.md](CHANGELOG.md)。见项目 [AGENTS.md](AGENTS.md)。
 
+### 未发布
+
+- 支持 AstrBot QQ 官方机器人 WebSocket（`qq_official`）与 Webhook（`qq_official_webhook`）适配器，并在插件元数据中声明支持平台。
+- QQ 官方机器人发送目标改用官方事件提供的群 `group_openid`（频道使用 `channel_id`）和 AstrBot 实际平台实例 ID；不再将传统 QQ 群号当作目标。
+- QQ 官方 API 不支持枚举机器人所在群聊：插件会在收到 QQ 官方群/频道消息时缓存目标到自身 `data/`，随后自动注入「发送位置」与「范围目标」下拉。AstrBot 重启后，目标群/频道需先发送一条消息以恢复官方适配器的主动发送场景。
+
 ### v0.1.1（新增：记忆日记）
 
 - 新增「记忆日记」功能：在自定义时间拉取上游 LivingMemory 保存的当日记忆，总结为日记并发送到指定群聊。
@@ -69,6 +75,8 @@
 1. 本插件依赖上游 [LivingMemory](https://github.com/lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory) 已安装并正常写入记忆（记忆日记读取其记忆库）。
 2. 将本插件放入 `AstrBot/data/plugins/`（或从插件市场安装），重载 AstrBot。
 3. 进入插件配置页：在 `diary_digest` 板块打开开关、确认提示词，并添加至少一条发送规则（总结范围 + 总结时间 HH:MM + 发送位置下拉）。
+
+使用 QQ 官方机器人时：先在目标 QQ 群或频道内向机器人发送一条消息，再刷新插件配置页并从下拉选择目标。QQ 官方适配器使用 `group_openid` / `channel_id`，不是传统 QQ 群号；同时需在 QQ 侧开启机器人主动发言权限。
 
 ## 🛠️ 开发
 

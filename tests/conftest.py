@@ -32,6 +32,36 @@ def register(*args, **kwargs):
     return decorator
 """
 
+EVENT_STUB = """
+class AstrMessageEvent:
+    pass
+
+
+class _EventMessageType:
+    GROUP_MESSAGE = object()
+
+
+class _PlatformAdapterType:
+    QQOFFICIAL = 1
+    QQOFFICIAL_WEBHOOK = 2
+
+
+class _Filter:
+    EventMessageType = _EventMessageType
+    PlatformAdapterType = _PlatformAdapterType
+
+    @staticmethod
+    def event_message_type(*args, **kwargs):
+        return lambda func: func
+
+    @staticmethod
+    def platform_adapter_type(*args, **kwargs):
+        return lambda func: func
+
+
+filter = _Filter()
+"""
+
 
 @pytest.fixture
 def loader_env(tmp_path):
@@ -45,6 +75,9 @@ def loader_env(tmp_path):
     api_dir.mkdir(parents=True)
     (api_dir / "__init__.py").write_text("")
     (api_dir / "star.py").write_text(STAR_STUB)
+    event_dir = api_dir / "event"
+    event_dir.mkdir()
+    (event_dir / "__init__.py").write_text(EVENT_STUB)
 
     sys.path.insert(0, str(tmp_path))
     yield tmp_path

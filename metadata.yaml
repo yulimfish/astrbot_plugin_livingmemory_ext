@@ -7,4 +7,6 @@ desc: 基于 lxfight-s-Astrbot-Plugins/astrbot_plugin_livingmemory 的定制化�
 repo: https://github.com/yulimfish/astrbot_plugin_livingmemory_ext
 support_platforms:
   - aiocqhttp
+  - qq_official
+  - qq_official_webhook
 astrbot_version: ">=4.24.2"
